@@ -1,6 +1,7 @@
 #include "esp_camera.h"
 #include <Adafruit_NeoPixel.h>
 #include <WiFi.h>
+#include <WiFiManager.h>
 
 #define CAMERA_MODEL_ESP32S3_EYE
 
@@ -10,6 +11,7 @@
 #define PIX_NUM 1
 
 Adafruit_NeoPixel pixels(PIX_NUM, PIN_PIXS, NEO_GRB + NEO_KHZ800);
+WiFiManager wm;
 
 void startCameraServer();
 
@@ -19,26 +21,15 @@ void showPixelColor(uint32_t c) {
 }
 
 void inline startWifiConfig() {
-  delay(500);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin();
   showPixelColor(0xFF0000);
-  for (int i = 0; i < 10; i++) {
-    if (WiFi.status() == WL_CONNECTED) {
-      break;
-    }
-    delay(500);
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.beginSmartConfig();
-    while (!WiFi.smartConfigDone()) {
-      delay(500);
-    }
-  }
-  while (!WiFi.localIP()) {
-    delay(200);
+  wm.setConfigPortalTimeout(180);
+  wm.setConfigPortalTimeoutCallback([]() { ESP.restart(); });
+  auto res = wm.autoConnect();
+  if (!res) {
+    ESP.restart();
   }
   showPixelColor(0x00FF00);
+  Serial.println(WiFi.localIP().toString().c_str());
 }
 
 void inline initCamera() {
@@ -88,11 +79,15 @@ void inline initCamera() {
   s->set_saturation(s, 0); // lower the saturation
 }
 
-void setup() {
-  Serial.begin(115200);
+inline void initPixels() {
   pixels.begin();
   pixels.setBrightness(8);
   showPixelColor(0x0);
+}
+
+void setup() {
+  Serial.begin(115200);
+  initPixels();
   initCamera();
   startWifiConfig();
   startCameraServer();
