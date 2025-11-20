@@ -18,6 +18,7 @@
 #include "fb_gfx.h"
 #include "driver/ledc.h"
 #include "sdkconfig.h"
+#include "esp_partition.h"
 #include "camera_index.h"
 
 #if defined(ARDUINO_ARCH_ESP32) && defined(CONFIG_ARDUHAL_ESP_LOG)
@@ -1356,6 +1357,18 @@ void startCameraServer()
 
     // load ids from flash partition
     recognizer.set_ids_from_flash();
+#endif
+
+#if CONFIG_ESP_FACE_RECOGNITION_ENABLED
+    // Only set the partition and load saved IDs if the partition actually exists.
+    const esp_partition_t *fr_part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fr");
+    if (fr_part) {
+        recognizer.set_partition(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "fr");
+        // load ids from flash partition
+        recognizer.set_ids_from_flash();
+    } else {
+        ESP_LOGW(TAG, "Face recognition partition 'fr' not found; skipping load from flash");
+    }
 #endif
     ESP_LOGI(TAG, "Starting web server on port: '%d'", config.server_port);
     if (httpd_start(&camera_httpd, &config) == ESP_OK)

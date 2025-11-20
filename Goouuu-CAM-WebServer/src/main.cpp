@@ -21,15 +21,35 @@ void showPixelColor(uint32_t c) {
 }
 
 void inline startWifiConfig() {
-  showPixelColor(0xFF0000);
+  showPixelColor(0xFF0000); // red while waiting
+
+  // Enable WiFiManager debug output
+  wm.setDebugOutput(true);
+
+  // Timeout for config portal
   wm.setConfigPortalTimeout(180);
-  wm.setConfigPortalTimeoutCallback([]() { ESP.restart(); });
-  auto res = wm.autoConnect();
+  wm.setConfigPortalTimeoutCallback([]() { 
+    Serial.println("Config portal timeout, restarting..."); 
+    ESP.restart(); 
+  });
+
+  // Callback for when Wi-Fi is connected
+  wm.setSaveConfigCallback([]() {
+    Serial.println("Wi-Fi credentials saved!");
+  });
+
+  // Start Wi-Fi portal with custom SSID/password
+  Serial.println("Starting Wi-Fi config portal...");
+  auto res = wm.autoConnect("Kaamaru_ESP32", "esp32cam");
+
   if (!res) {
+    Serial.println("Failed to connect to Wi-Fi, restarting...");
     ESP.restart();
   }
-  showPixelColor(0x00FF00);
-  Serial.println(WiFi.localIP().toString().c_str());
+
+  Serial.print("Connected! IP address: ");
+  Serial.println(WiFi.localIP());
+  showPixelColor(0x00FF00); // green on success
 }
 
 void inline initCamera() {
